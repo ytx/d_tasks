@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DailyTasks</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color, #f0f0f0);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        :root {
+            --todo-color: #ff6b6b;
+            --done-color: #51cf66;
+            --bg-color: #f0f0f0;
+        }
+
+        .main-area {
+            flex: 1;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .sidebar {
+            width: 50px;
+            background-color: rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            gap: 20px;
+            justify-content: space-between;
+        }
+
+        .sidebar-top {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-bottom {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-button {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background-color: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        .sidebar-button:hover {
+            background-color: #4a90e2;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .tasks-grid {
+            display: grid;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .task-tile {
+            background-color: var(--todo-color);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            user-select: none;
+            position: relative;
+        }
+
+        .task-tile:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .task-tile.done {
+            background-color: var(--done-color);
+        }
+
+        .task-tile.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .button.primary {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        .button.primary:hover {
+            background-color: #357abd;
+        }
+
+        .button.danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .button.danger:hover {
+            background-color: #c0392b;
+        }
+
+        .button.secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        .button.secondary:hover {
+            background-color: #7f8c8d;
+        }
+
+        .color-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-preview {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab.active {
+            border-bottom-color: #4a90e2;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            display: none;
+        }
+
+        .context-menu-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .context-menu-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        @media (max-width: 768px) {
+            .main-area {
+                padding: 10px;
+            }
+            
+            .sidebar {
+                width: 40px;
+                padding: 15px 0;
+                gap: 15px;
+            }
+            
+            .sidebar-button {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-area">
+        <div id="tasksGrid" class="tasks-grid"></div>
+    </div>
+    
+    <div class="sidebar">
+        <div class="sidebar-top">
+            <button class="sidebar-button" id="addTaskBtn" title="新しいタスクを追加">+</button>
+            <button class="sidebar-button" id="settingsBtn" title="設定">⚙</button>
+        </div>
+        <div class="sidebar-bottom">
+            <a href="https://github.com/ytx/d_tasks" class="sidebar-button" id="githubBtn" title="GitHub" target="_blank">🐈‍⬛</a>
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="taskModalTitle">タスク追加</h2>
+                <span class="close" id="closeTaskModal">&times;</span>
+            </div>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="taskLabel">タスク名</label>
+                    <input type="text" id="taskLabel" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskTopic">MQTTトピック</label>
+                    <input type="text" id="taskTopic" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>実行曜日</label>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="day0" value="0">
+                            <label for="day0">日</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="day1" value="1" checked>
+                            <label for="day1">月</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="day2" value="2" checked>
+                            <label for="day2">火</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="day3" value="3" checked>
+                            <label for="day3">水</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="day4" value="4" checked>
+                            <label for="day4">木</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="day5" value="5" checked>
+                            <label for="day5">金</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="day6" value="6" checked>
+                            <label for="day6">土</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskTime">実行時刻（自動todo化）</label>
+                    <input type="time" id="taskTime">
+                </div>
+                
+                <div style="text-align: right;">
+                    <button type="button" class="button secondary" id="cancelTask">キャンセル</button>
+                    <button type="button" class="button danger" id="deleteTask" style="display: none;">削除</button>
+                    <button type="submit" class="button primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>設定</h2>
+                <span class="close" id="closeSettingsModal">&times;</span>
+            </div>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('mqtt')">MQTT</button>
+                <button class="tab" onclick="showTab('colors')">色設定</button>
+                <button class="tab" onclick="showTab('data')">データ管理</button>
+            </div>
+            
+            <div id="mqttTab" class="tab-content active">
+                <div class="form-group">
+                    <label for="mqttHost">MQTTホスト</label>
+                    <input type="text" id="mqttHost" placeholder="localhost">
+                </div>
+                
+                <div class="form-group">
+                    <label for="mqttPort">MQTTポート</label>
+                    <input type="number" id="mqttPort" placeholder="1883">
+                </div>
+                
+                <div class="form-group">
+                    <label for="mqttTopicPrefix">トピックプレフィックス</label>
+                    <input type="text" id="mqttTopicPrefix" placeholder="dailytasks/">
+                </div>
+            </div>
+            
+            <div id="colorsTab" class="tab-content">
+                <div class="form-group">
+                    <label for="todoColor">TODO色</label>
+                    <div class="color-input-group">
+                        <input type="color" id="todoColor" value="#ff6b6b">
+                        <div class="color-preview" id="todoColorPreview"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="doneColor">DONE色</label>
+                    <div class="color-input-group">
+                        <input type="color" id="doneColor" value="#51cf66">
+                        <div class="color-preview" id="doneColorPreview"></div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="bgColor">背景色</label>
+                    <div class="color-input-group">
+                        <input type="color" id="bgColor" value="#f0f0f0">
+                        <div class="color-preview" id="bgColorPreview"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="dataTab" class="tab-content">
+                <div class="form-group">
+                    <label for="exportData">エクスポート/インポート</label>
+                    <textarea id="exportData" placeholder="設定データがここに表示されます"></textarea>
+                </div>
+                
+                <div style="text-align: right;">
+                    <button type="button" class="button secondary" onclick="exportSettings()">エクスポート</button>
+                    <button type="button" class="button primary" onclick="importSettings()">インポート</button>
+                </div>
+            </div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button type="button" class="button secondary" onclick="closeSettings()">キャンセル</button>
+                <button type="button" class="button primary" onclick="saveSettings()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu">
+        <button class="context-menu-item" onclick="editTask()">編集</button>
+        <button class="context-menu-item" onclick="deleteTaskFromContext()">削除</button>
+    </div>
+
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script>
+        let tasks = [];
+        let settings = {
+            mqtt: {
+                host: 'localhost',
+                port: 1883,
+                topicPrefix: 'dailytasks/'
+            },
+            colors: {
+                todo: '#ff6b6b',
+                done: '#51cf66',
+                background: '#f0f0f0'
+            }
+        };
+        let mqttClient = null;
+        let currentEditingTask = null;
+        let contextMenuTask = null;
+        let longPressTimer = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            loadTasks();
+            renderTasks();
+            setupEventListeners();
+            connectMQTT();
+            startTimeChecker();
+        });
+
+        function setupEventListeners() {
+            // Sidebar buttons
+            document.getElementById('addTaskBtn').addEventListener('click', () => openTaskModal());
+            document.getElementById('settingsBtn').addEventListener('click', () => openSettingsModal());
+            
+            // Modal close buttons
+            document.getElementById('closeTaskModal').addEventListener('click', closeTaskModal);
+            document.getElementById('closeSettingsModal').addEventListener('click', closeSettings);
+            document.getElementById('cancelTask').addEventListener('click', closeTaskModal);
+            document.getElementById('deleteTask').addEventListener('click', deleteCurrentTask);
+            
+            // Task form
+            document.getElementById('taskForm').addEventListener('submit', saveTask);
+            
+            // Color inputs
+            ['todoColor', 'doneColor', 'bgColor'].forEach(id => {
+                document.getElementById(id).addEventListener('input', updateColorPreview);
+            });
+            
+            // Close modals when clicking outside
+            window.addEventListener('click', function(event) {
+                const taskModal = document.getElementById('taskModal');
+                const settingsModal = document.getElementById('settingsModal');
+                const contextMenu = document.getElementById('contextMenu');
+                
+                if (event.target === taskModal) {
+                    closeTaskModal();
+                }
+                if (event.target === settingsModal) {
+                    closeSettings();
+                }
+                if (!contextMenu.contains(event.target)) {
+                    hideContextMenu();
+                }
+            });
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('dailytasks-settings');
+            if (saved) {
+                settings = { ...settings, ...JSON.parse(saved) };
+            }
+            applySettings();
+        }
+
+        function saveSettingsToStorage() {
+            localStorage.setItem('dailytasks-settings', JSON.stringify(settings));
+        }
+
+        function loadTasks() {
+            const saved = localStorage.getItem('dailytasks-tasks');
+            if (saved) {
+                tasks = JSON.parse(saved);
+            }
+        }
+
+        function saveTasksToStorage() {
+            localStorage.setItem('dailytasks-tasks', JSON.stringify(tasks));
+        }
+
+        function applySettings() {
+            document.documentElement.style.setProperty('--todo-color', settings.colors.todo);
+            document.documentElement.style.setProperty('--done-color', settings.colors.done);
+            document.documentElement.style.setProperty('--bg-color', settings.colors.background);
+        }
+
+        function renderTasks() {
+            const grid = document.getElementById('tasksGrid');
+            grid.innerHTML = '';
+            
+            if (tasks.length === 0) {
+                grid.innerHTML = '<div style="text-align: center; color: #666; grid-column: 1/-1;">タスクがありません。右側の + ボタンでタスクを追加してください。</div>';
+                return;
+            }
+            
+            // Calculate grid dimensions
+            const aspectRatio = window.innerWidth / window.innerHeight;
+            const cols = Math.ceil(Math.sqrt(tasks.length * aspectRatio));
+            const rows = Math.ceil(tasks.length / cols);
+            
+            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            
+            tasks.forEach((task, index) => {
+                const tile = document.createElement('div');
+                tile.className = `task-tile ${task.state}`;
+                tile.textContent = task.label;
+                tile.draggable = true;
+                tile.dataset.index = index;
+                
+                // Click handler
+                tile.addEventListener('click', () => toggleTaskState(index));
+                
+                // Context menu (right-click)
+                tile.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContextMenu(e, index);
+                });
+                
+                // Long press for mobile
+                tile.addEventListener('touchstart', (e) => {
+                    longPressTimer = setTimeout(() => {
+                        showContextMenu(e.touches[0], index);
+                    }, 500);
+                });
+                
+                tile.addEventListener('touchend', () => {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                });
+                
+                // Drag and drop
+                tile.addEventListener('dragstart', handleDragStart);
+                tile.addEventListener('dragover', handleDragOver);
+                tile.addEventListener('drop', handleDrop);
+                tile.addEventListener('dragend', handleDragEnd);
+                
+                grid.appendChild(tile);
+            });
+        }
+
+        function openTaskModal(taskIndex = null) {
+            currentEditingTask = taskIndex;
+            const modal = document.getElementById('taskModal');
+            const title = document.getElementById('taskModalTitle');
+            const deleteBtn = document.getElementById('deleteTask');
+            
+            if (taskIndex !== null) {
+                title.textContent = 'タスク編集';
+                deleteBtn.style.display = 'inline-block';
+                fillTaskForm(tasks[taskIndex]);
+            } else {
+                title.textContent = 'タスク追加';
+                deleteBtn.style.display = 'none';
+                resetTaskForm();
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').style.display = 'none';
+            currentEditingTask = null;
+        }
+
+        function fillTaskForm(task) {
+            document.getElementById('taskLabel').value = task.label;
+            document.getElementById('taskTopic').value = task.topic;
+            document.getElementById('taskTime').value = task.time || '';
+            
+            // Clear all day checkboxes first
+            for (let i = 0; i < 7; i++) {
+                document.getElementById(`day${i}`).checked = false;
+            }
+            
+            // Check selected days
+            if (task.days) {
+                task.days.forEach(day => {
+                    document.getElementById(`day${day}`).checked = true;
+                });
+            }
+        }
+
+        function resetTaskForm() {
+            document.getElementById('taskLabel').value = '';
+            document.getElementById('taskTopic').value = '';
+            document.getElementById('taskTime').value = '';
+            
+            // Check all days by default (except Sunday)
+            for (let i = 0; i < 7; i++) {
+                document.getElementById(`day${i}`).checked = i !== 0;
+            }
+        }
+
+        function saveTask(e) {
+            e.preventDefault();
+            
+            const label = document.getElementById('taskLabel').value.trim();
+            const topic = document.getElementById('taskTopic').value.trim();
+            const time = document.getElementById('taskTime').value;
+            
+            if (!label || !topic) {
+                alert('タスク名とMQTTトピックは必須です。');
+                return;
+            }
+            
+            const days = [];
+            for (let i = 0; i < 7; i++) {
+                if (document.getElementById(`day${i}`).checked) {
+                    days.push(i);
+                }
+            }
+            
+            const task = {
+                id: currentEditingTask !== null ? tasks[currentEditingTask].id : Date.now(),
+                label,
+                topic,
+                days,
+                time: time || null,
+                state: 'todo'
+            };
+            
+            if (currentEditingTask !== null) {
+                task.state = tasks[currentEditingTask].state; // Preserve current state
+                tasks[currentEditingTask] = task;
+            } else {
+                tasks.push(task);
+            }
+            
+            saveTasksToStorage();
+            renderTasks();
+            closeTaskModal();
+        }
+
+        function deleteCurrentTask() {
+            if (currentEditingTask !== null && confirm('このタスクを削除しますか？')) {
+                tasks.splice(currentEditingTask, 1);
+                saveTasksToStorage();
+                renderTasks();
+                closeTaskModal();
+            }
+        }
+
+        function toggleTaskState(index) {
+            const task = tasks[index];
+            task.state = task.state === 'todo' ? 'done' : 'todo';
+            saveTasksToStorage();
+            renderTasks();
+            
+            // Publish to MQTT
+            if (mqttClient && mqttClient.connected) {
+                const fullTopic = settings.mqtt.topicPrefix + task.topic;
+                mqttClient.publish(fullTopic, task.state);
+            }
+        }
+
+        function showContextMenu(event, taskIndex) {
+            const contextMenu = document.getElementById('contextMenu');
+            contextMenuTask = taskIndex;
+            
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = event.clientX + 'px';
+            contextMenu.style.top = event.clientY + 'px';
+        }
+
+        function hideContextMenu() {
+            document.getElementById('contextMenu').style.display = 'none';
+            contextMenuTask = null;
+        }
+
+        function editTask() {
+            if (contextMenuTask !== null) {
+                openTaskModal(contextMenuTask);
+                hideContextMenu();
+            }
+        }
+
+        function deleteTaskFromContext() {
+            if (contextMenuTask !== null && confirm('このタスクを削除しますか？')) {
+                tasks.splice(contextMenuTask, 1);
+                saveTasksToStorage();
+                renderTasks();
+                hideContextMenu();
+            }
+        }
+
+        // Drag and Drop functionality
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            if (this !== draggedElement) {
+                const fromIndex = parseInt(draggedElement.dataset.index);
+                const toIndex = parseInt(this.dataset.index);
+                
+                // Reorder tasks array
+                const movedTask = tasks.splice(fromIndex, 1)[0];
+                tasks.splice(toIndex, 0, movedTask);
+                
+                saveTasksToStorage();
+                renderTasks();
+            }
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            draggedElement = null;
+        }
+
+        // Settings functionality
+        function openSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            
+            // Load current settings into form
+            document.getElementById('mqttHost').value = settings.mqtt.host;
+            document.getElementById('mqttPort').value = settings.mqtt.port;
+            document.getElementById('mqttTopicPrefix').value = settings.mqtt.topicPrefix;
+            document.getElementById('todoColor').value = settings.colors.todo;
+            document.getElementById('doneColor').value = settings.colors.done;
+            document.getElementById('bgColor').value = settings.colors.background;
+            
+            updateColorPreview();
+            modal.style.display = 'block';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        function updateColorPreview() {
+            const todoColor = document.getElementById('todoColor').value;
+            const doneColor = document.getElementById('doneColor').value;
+            const bgColor = document.getElementById('bgColor').value;
+            
+            document.getElementById('todoColorPreview').style.backgroundColor = todoColor;
+            document.getElementById('doneColorPreview').style.backgroundColor = doneColor;
+            document.getElementById('bgColorPreview').style.backgroundColor = bgColor;
+        }
+
+        function saveSettings() {
+            settings.mqtt.host = document.getElementById('mqttHost').value;
+            settings.mqtt.port = parseInt(document.getElementById('mqttPort').value) || 1883;
+            settings.mqtt.topicPrefix = document.getElementById('mqttTopicPrefix').value;
+            settings.colors.todo = document.getElementById('todoColor').value;
+            settings.colors.done = document.getElementById('doneColor').value;
+            settings.colors.background = document.getElementById('bgColor').value;
+            
+            saveSettingsToStorage();
+            applySettings();
+            closeSettings();
+            
+            // Reconnect MQTT with new settings
+            if (mqttClient) {
+                mqttClient.end();
+            }
+            connectMQTT();
+        }
+
+        function exportSettings() {
+            const exportData = {
+                settings: settings,
+                tasks: tasks
+            };
+            document.getElementById('exportData').value = JSON.stringify(exportData, null, 2);
+        }
+
+        function importSettings() {
+            const importText = document.getElementById('exportData').value.trim();
+            if (!importText) {
+                alert('インポートするデータを入力してください。');
+                return;
+            }
+            
+            try {
+                const importData = JSON.parse(importText);
+                
+                if (importData.settings) {
+                    settings = { ...settings, ...importData.settings };
+                    saveSettingsToStorage();
+                    applySettings();
+                }
+                
+                if (importData.tasks && Array.isArray(importData.tasks)) {
+                    tasks = importData.tasks;
+                    saveTasksToStorage();
+                    renderTasks();
+                }
+                
+                alert('データがインポートされました。');
+                closeSettings();
+                
+                // Reconnect MQTT
+                if (mqttClient) {
+                    mqttClient.end();
+                }
+                connectMQTT();
+                
+            } catch (error) {
+                alert('無効なJSONデータです。');
+            }
+        }
+
+        // MQTT functionality
+        function connectMQTT() {
+            if (!settings.mqtt.host) return;
+            
+            try {
+                const url = `ws://${settings.mqtt.host}:${settings.mqtt.port}/mqtt`;
+                mqttClient = mqtt.connect(url);
+                
+                mqttClient.on('connect', () => {
+                    console.log('MQTT connected');
+                    
+                    // Subscribe to all task topics
+                    tasks.forEach(task => {
+                        const fullTopic = settings.mqtt.topicPrefix + task.topic;
+                        mqttClient.subscribe(fullTopic);
+                    });
+                });
+                
+                mqttClient.on('message', (topic, message) => {
+                    const state = message.toString();
+                    const taskTopic = topic.replace(settings.mqtt.topicPrefix, '');
+                    
+                    // Find and update task
+                    const taskIndex = tasks.findIndex(task => task.topic === taskTopic);
+                    if (taskIndex !== -1 && (state === 'todo' || state === 'done')) {
+                        tasks[taskIndex].state = state;
+                        saveTasksToStorage();
+                        renderTasks();
+                    }
+                });
+                
+                mqttClient.on('error', (error) => {
+                    console.error('MQTT error:', error);
+                });
+                
+            } catch (error) {
+                console.error('MQTT connection failed:', error);
+            }
+        }
+
+        // Time-based task automation
+        function startTimeChecker() {
+            setInterval(() => {
+                const now = new Date();
+                const currentDay = now.getDay();
+                const currentTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                                  now.getMinutes().toString().padStart(2, '0');
+                
+                let hasChanges = false;
+                
+                tasks.forEach(task => {
+                    if (task.time && task.days.includes(currentDay)) {
+                        if (task.time === currentTime && task.state !== 'todo') {
+                            task.state = 'todo';
+                            hasChanges = true;
+                            
+                            // Publish to MQTT
+                            if (mqttClient && mqttClient.connected) {
+                                const fullTopic = settings.mqtt.topicPrefix + task.topic;
+                                mqttClient.publish(fullTopic, 'todo');
+                            }
+                        }
+                    }
+                });
+                
+                if (hasChanges) {
+                    saveTasksToStorage();
+                    renderTasks();
+                }
+            }, 60000); // Check every minute
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            renderTasks();
+        });
+    </script>
+</body>
+</html>
