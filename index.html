@@ -317,6 +317,7 @@
     
     <div class="sidebar">
         <div class="sidebar-top">
+            <button class="sidebar-button" id="fullscreenBtn" title="全画面表示">⛶</button>
             <button class="sidebar-button" id="addTaskBtn" title="新しいタスクを追加">+</button>
             <button class="sidebar-button" id="settingsBtn" title="設定">⚙</button>
         </div>
@@ -505,6 +506,7 @@
 
         function setupEventListeners() {
             // Sidebar buttons
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
             document.getElementById('addTaskBtn').addEventListener('click', () => openTaskModal());
             document.getElementById('settingsBtn').addEventListener('click', () => openSettingsModal());
             
@@ -985,6 +987,32 @@
                 }
             }, 60000); // Check every minute
         }
+
+        // Fullscreen functionality
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error('Error attempting to enable fullscreen:', err);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Update fullscreen button icon
+        function updateFullscreenButton() {
+            const btn = document.getElementById('fullscreenBtn');
+            if (document.fullscreenElement) {
+                btn.textContent = '⛶'; // Exit fullscreen icon
+                btn.title = '全画面解除';
+            } else {
+                btn.textContent = '⛶'; // Fullscreen icon
+                btn.title = '全画面表示';
+            }
+        }
+
+        // Listen for fullscreen changes
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
 
         // Handle window resize
         window.addEventListener('resize', () => {
