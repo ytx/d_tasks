@@ -739,7 +739,7 @@
             // Publish to MQTT
             if (mqttClient && mqttClient.connected) {
                 const fullTopic = settings.mqtt.topicPrefix + task.topic;
-                mqttClient.publish(fullTopic, task.state);
+                mqttClient.publish(fullTopic, task.state, { retain: true });
             }
         }
 
@@ -975,7 +975,7 @@
                             // Publish to MQTT
                             if (mqttClient && mqttClient.connected) {
                                 const fullTopic = settings.mqtt.topicPrefix + task.topic;
-                                mqttClient.publish(fullTopic, 'todo');
+                                mqttClient.publish(fullTopic, 'todo', { retain: true });
                             }
                         }
                     }
