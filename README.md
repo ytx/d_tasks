@@ -1,4 +1,4 @@
-# DailyTasks
+# DailyTasks（開発終了）
 
 このアプリの機能は MQTT Panel (https://github.com/ytx/mqtt_p) に統合しました。
 今後、このアプリのメンテナンスは行いません。
